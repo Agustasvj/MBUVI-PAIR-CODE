@@ -23,6 +23,9 @@ function removeFile(path) {
 router.get('/', async (req, res) => {
     const id = makeid();
     const num = (req.query.number || '').replace(/[^0-9]/g, '');
+    if (!num) {
+    return res.json({ code: "Please provide a phone number" });
+    }
     const tempDir = path.join(sessionDir, id);
     let responseSent = false;
     let sessionCleanedUp = false;
@@ -71,8 +74,9 @@ router.get('/', async (req, res) => {
             if (!sock.authState.creds.registered) {
                 await delay(2000); 
                 const code = await sock.requestPairingCode(num);
+                const formatted = code?.match(/.{1,4}/g)?.join('-') || code;
                 if (!responseSent && !res.headersSent) {
-                    res.json({ code: code });
+                    res.json({ code: formatted });
                     responseSent = true;
                 }
             }
@@ -100,20 +104,20 @@ router.get('/', async (req, res) => {
                         console.log("Welcome message skipped, continuing...");
                     }
 
-                    await delay(15000);
+                    await delay(30000);
 
                     const credsPath = path.join(tempDir, "creds.json");
 
 
                     let sessionData = null;
                     let attempts = 0;
-                    const maxAttempts = 10;
+                    const maxAttempts = 20;
 
                     while (attempts < maxAttempts && !sessionData) {
                         try {
                             if (fs.existsSync(credsPath)) {
                                 const data = fs.readFileSync(credsPath);
-                                if (data && data.length > 50) {
+                                if (data && data.length > 10) {
                                     sessionData = data;
                                     break;
                                 }
