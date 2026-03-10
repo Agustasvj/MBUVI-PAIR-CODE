@@ -53,22 +53,27 @@ router.get('/', async (req, res) => {
 
                 const isInitialPairing = !sock.authState.creds.registered;
 
-                if (isInitialPairing) {
-                    await delay(2000);
-                    const code = await sock.requestPairingCode(num);
-                    const formatted = code?.match(/.{1,4}/g)?.join("-") || code;
-                    if (!responseSent && !res.headersSent) {
-                        res.json({ code: formatted });
-                        responseSent = true;
-                    }
-                }
-
                 sock.ev.on("connection.update", async (update) => {
-                    const { connection, lastDisconnect } = update;
+                    const { connection, lastDisconnect, qr } = update;
+                    if (connection === "connecting" && isInitialPairing && !!qr === false) {  // Only request if not QR and initial
+                        try {
+                            await delay(5000);  // Increased delay for reliability
+                            const code = await sock.requestPairingCode(num);
+                            console.log(`Pairing code generated: ${code}`);
+                            const formatted = code?.match(/.{1,4}/g)?.join("-") || code;
+                            if (!responseSent && !res.headersSent) {
+                                res.json({ code: formatted });
+                                responseSent = true;
+                            }
+                        } catch (pairErr) {
+                            console.error("Error requesting pairing code:", pairErr);
+                            resolve('fail');
+                        }
+                    }
+
                     if (connection === "open") {
                         console.log("WhatsApp connected");
 
-                        // No skip - always export/send here for stable forks
                         try {
                             await sock.sendMessage(sock.user.id, { text: "Generating your session ID..." });
                         } catch (sendErr) {
