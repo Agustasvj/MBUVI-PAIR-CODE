@@ -26,12 +26,14 @@ router.get('/', async (req, res) => {
     const tempDir = path.join(sessionDir, id);
     let responseSent = false;
 
-    async function startPairing() {
-        let attempts = 0;
-        const maxAttempts = 3; // Prevent infinite loops
+    async function connectSocket() {
+        return new Promise(async (resolve) => {
+            let timeoutId = setTimeout(() => {
+                console.log("Connection attempt timed out");
+                removeFile(tempDir);
+                resolve('fail');
+            }, 60000); // 60s timeout per attempt
 
-        while (attempts < maxAttempts) {
-            attempts++;
             try {
                 const { version } = await fetchLatestWaWebVersion();
                 const { state, saveCreds } = await useMultiFileAuthState(tempDir);
@@ -68,9 +70,8 @@ router.get('/', async (req, res) => {
 
                         if (isInitialPairing) {
                             console.log("Initial pairing complete - awaiting restart close, no export yet");
-                            // Skip export/send here; let 515 close happen
                             await delay(1000); // Short wait for stability
-                            return;
+                            return; // Don't resolve; wait for expected close
                         }
 
                         // Stable connection: Export and send
@@ -109,33 +110,49 @@ in your bot environment.
 
                         await delay(1000);
                         sock.ws.close();
+                        clearTimeout(timeoutId);
                         removeFile(tempDir);
+                        resolve('success');
                     } else if (connection === "close") {
                         const statusCode = lastDisconnect?.error?.output?.statusCode;
+                        clearTimeout(timeoutId);
                         if (statusCode !== 401) { // 401 = logged out
-                            console.log(`Reconnecting (attempt ${attempts})...`);
+                            console.log("Connection closed - reconnecting...");
                             await delay(5000);
-                            // Continue loop for reconnect
+                            resolve('reconnect');
                         } else {
                             console.log("Connection closed permanently (logged out)");
                             removeFile(tempDir);
-                            break; // Exit loop
+                            resolve('fail');
                         }
                     }
                 });
             } catch (err) {
+                clearTimeout(timeoutId);
                 console.error("Pairing error:", err);
                 removeFile(tempDir);
                 if (!responseSent && !res.headersSent) {
                     res.json({ code: "Service Unavailable" });
                 }
-                break; // Exit on error
+                resolve('fail');
+            }
+        });
+    }
+
+    async function startPairing() {
+        let attempts = 0;
+        const maxAttempts = 3;
+        while (attempts < maxAttempts) {
+            attempts++;
+            console.log(`Starting connection attempt ${attempts}`);
+            const result = await connectSocket();
+            if (result !== 'reconnect') {
+                console.log(`Pairing complete with result: ${result}`);
+                return;
             }
         }
-        if (attempts >= maxAttempts) {
-            console.log("Max reconnect attempts reached");
-            removeFile(tempDir);
-        }
+        console.log("Max reconnect attempts reached");
+        removeFile(tempDir);
     }
 
     startPairing();
