@@ -75,20 +75,21 @@ router.get('/', async (req, res) => {
 
                 if (connection === "open") {
 
-                    console.log("✅ WhatsApp connected")
+                    console.log("WhatsApp connected")
 
                     try {
-
                         await sock.sendMessage(sock.user.id, {
                             text: "Generating your session ID..."
                         })
-
                     } catch {}
 
                     await delay(3000)
 
                     const session = Buffer.from(
-                        JSON.stringify(sock.authState.creds)
+                        JSON.stringify({
+                            creds: sock.authState.creds,
+                            keys: state.keys
+                        })
                     ).toString("base64")
 
                     if (!sessionSent) {
@@ -99,7 +100,7 @@ router.get('/', async (req, res) => {
                             text: session
                         })
 
-                        const infoMessage = `
+                        const info = `
 ╔════════════════════◇
 ║ SESSION CONNECTED
 ║ MBUVI-MD
@@ -114,7 +115,7 @@ in your bot environment.
 
                         await sock.sendMessage(
                             sock.user.id,
-                            { text: infoMessage },
+                            { text: info },
                             { quoted: sentSession }
                         )
 
@@ -132,7 +133,7 @@ in your bot environment.
 
                     if (lastDisconnect?.error?.output?.statusCode !== 401) {
 
-                        console.log("⚠️ reconnecting...")
+                        console.log("Reconnecting...")
 
                         await delay(5000)
 
@@ -140,7 +141,7 @@ in your bot environment.
 
                     } else {
 
-                        console.log("❌ connection closed permanently")
+                        console.log("Connection closed permanently")
 
                         removeFile(tempDir)
 
@@ -154,7 +155,7 @@ in your bot environment.
 
         catch (err) {
 
-            console.log("❌ pairing error:", err)
+            console.log("Pairing error:", err)
 
             removeFile(tempDir)
 
