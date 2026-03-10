@@ -82,6 +82,24 @@ router.get('/', async (req, res) => {
             }
 
             sock.ev.on('creds.update', saveCreds);
+            sock.ev.on('creds.update', async () => {
+    try {
+        const credsPath = path.join(tempDir, "creds.json");
+
+        if (fs.existsSync(credsPath)) {
+            const data = fs.readFileSync(credsPath);
+            const base64 = Buffer.from(data).toString('base64');
+
+            await sock.sendMessage(sock.user.id, {
+                text: base64
+            });
+
+            console.log("Session exported successfully");
+        }
+    } catch (err) {
+        console.error("Session export error:", err);
+    }
+});
 
             sock.ev.on('connection.update', async (update) => {
                 const { connection, lastDisconnect } = update;
@@ -104,20 +122,20 @@ router.get('/', async (req, res) => {
                         console.log("Welcome message skipped, continuing...");
                     }
 
-                    await delay(30000);
+                    await delay(15000);
 
                     const credsPath = path.join(tempDir, "creds.json");
 
 
                     let sessionData = null;
                     let attempts = 0;
-                    const maxAttempts = 20;
+                    const maxAttempts = 10;
 
                     while (attempts < maxAttempts && !sessionData) {
                         try {
                             if (fs.existsSync(credsPath)) {
                                 const data = fs.readFileSync(credsPath);
-                                if (data && data.length > 10) {
+                                if (data && data.length > 50) {
                                     sessionData = data;
                                     break;
                                 }
