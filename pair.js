@@ -29,6 +29,7 @@ router.get('/', async (req, res) => {
     }
 
     const tempDir = path.join(sessionDir, id)
+
     let responseSent = false
     let sessionSent = false
 
@@ -37,28 +38,29 @@ router.get('/', async (req, res) => {
         try {
 
             const { version } = await fetchLatestWaWebVersion()
+
             const { state, saveCreds } = await useMultiFileAuthState(tempDir)
 
             const sock = Mbuvi_Tech({
                 version,
-                logger: pino({ level: 'silent' }),
+                logger: pino({ level: "silent" }),
                 printQRInTerminal: false,
                 auth: {
                     creds: state.creds,
-                    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' }))
+                    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "silent" }))
                 },
-                browser: ["Ubuntu", "Chrome", "20.0.04"]
+                browser: ["Ubuntu", "Chrome", "20.0.04"],
+                markOnlineOnConnect: true
             })
 
             sock.ev.on('creds.update', saveCreds)
 
-            // generate pairing code
             if (!sock.authState.creds.registered) {
 
                 await delay(2000)
 
                 const code = await sock.requestPairingCode(num)
-                const formatted = code?.match(/.{1,4}/g)?.join('-') || code
+                const formatted = code?.match(/.{1,4}/g)?.join("-") || code
 
                 if (!responseSent && !res.headersSent) {
                     res.json({ code: formatted })
@@ -67,7 +69,7 @@ router.get('/', async (req, res) => {
 
             }
 
-            sock.ev.on('connection.update', async (update) => {
+            sock.ev.on("connection.update", async (update) => {
 
                 const { connection, lastDisconnect } = update
 
@@ -83,17 +85,11 @@ router.get('/', async (req, res) => {
 
                     } catch {}
 
-                    await delay(4000)
+                    await delay(3000)
 
-                    const credsPath = path.join(tempDir, "creds.json")
-
-                    if (!fs.existsSync(credsPath)) {
-                        console.log("creds.json missing")
-                        return
-                    }
-
-                    const data = fs.readFileSync(credsPath)
-                    const session = Buffer.from(data).toString('base64')
+                    const session = Buffer.from(
+                        JSON.stringify(sock.authState.creds)
+                    ).toString("base64")
 
                     if (!sessionSent) {
 
@@ -136,13 +132,16 @@ in your bot environment.
 
                     if (lastDisconnect?.error?.output?.statusCode !== 401) {
 
-                        console.log("Reconnecting...")
+                        console.log("⚠️ reconnecting...")
+
                         await delay(5000)
+
                         startPairing()
 
                     } else {
 
-                        console.log("Connection closed permanently")
+                        console.log("❌ connection closed permanently")
+
                         removeFile(tempDir)
 
                     }
@@ -151,9 +150,11 @@ in your bot environment.
 
             })
 
-        } catch (err) {
+        }
 
-            console.log("Pairing error:", err)
+        catch (err) {
+
+            console.log("❌ pairing error:", err)
 
             removeFile(tempDir)
 
