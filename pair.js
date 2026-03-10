@@ -68,13 +68,7 @@ router.get('/', async (req, res) => {
                     if (connection === "open") {
                         console.log("WhatsApp connected");
 
-                        if (isInitialPairing) {
-                            console.log("Initial pairing complete - awaiting restart close, no export yet");
-                            await delay(1000); // Short wait for stability
-                            return; // Don't resolve; wait for expected close
-                        }
-
-                        // Stable connection: Export and send
+                        // No skip - always export/send here for stable forks
                         try {
                             await sock.sendMessage(sock.user.id, { text: "Generating your session ID..." });
                         } catch (sendErr) {
