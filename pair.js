@@ -23,9 +23,6 @@ function removeFile(path) {
 router.get('/', async (req, res) => {
     const id = makeid();
     const num = (req.query.number || '').replace(/[^0-9]/g, '');
-    if (!num) {
-    return res.json({ code: "Please provide a phone number" });
-    }
     const tempDir = path.join(sessionDir, id);
     let responseSent = false;
     let sessionCleanedUp = false;
@@ -74,32 +71,13 @@ router.get('/', async (req, res) => {
             if (!sock.authState.creds.registered) {
                 await delay(2000); 
                 const code = await sock.requestPairingCode(num);
-                const formatted = code?.match(/.{1,4}/g)?.join('-') || code;
                 if (!responseSent && !res.headersSent) {
-                    res.json({ code: formatted });
+                    res.json({ code: code });
                     responseSent = true;
                 }
             }
 
             sock.ev.on('creds.update', saveCreds);
-            sock.ev.on('creds.update', async () => {
-    try {
-        const credsPath = path.join(tempDir, "creds.json");
-
-        if (fs.existsSync(credsPath)) {
-            const data = fs.readFileSync(credsPath);
-            const base64 = Buffer.from(data).toString('base64');
-
-            await sock.sendMessage(sock.user.id, {
-                text: base64
-            });
-
-            console.log("Session exported successfully");
-        }
-    } catch (err) {
-        console.error("Session export error:", err);
-    }
-});
 
             sock.ev.on('connection.update', async (update) => {
                 const { connection, lastDisconnect } = update;
