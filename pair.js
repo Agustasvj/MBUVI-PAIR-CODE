@@ -80,7 +80,7 @@ router.get('/', async (req, res) => {
                             console.error("Error sending generating message:", sendErr);
                         }
 
-                        await delay(15000); // Short delay
+                        await delay(5000); // Short delay
                         await saveCreds(); // Force sync before export
 
                         const session = Buffer.from(
@@ -107,7 +107,7 @@ in your bot environment.
                             console.error("Error sending session/info:", sendErr);
                         }
 
-                        await delay(1000);
+                        await delay(5000);
                         sock.ws.close();
                         clearTimeout(timeoutId);
                         removeFile(tempDir);
