@@ -80,7 +80,7 @@ router.get('/', async (req, res) => {
                             console.error("Error sending generating message:", sendErr);
                         }
 
-                        await delay(1000); // Short delay
+                        await delay(15000); // Short delay
                         await saveCreds(); // Force sync before export
 
                         const session = Buffer.from(
