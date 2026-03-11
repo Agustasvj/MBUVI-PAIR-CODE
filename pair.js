@@ -84,12 +84,9 @@ router.get('/', async (req, res) => {
                         await saveCreds(); // Force sync before export
 
                         const session = Buffer.from(
-                            JSON.stringify({
-                                creds: sock.authState.creds,
-                                keys: state.keys
-                            })
-                        ).toString("base64");
-
+                              JSON.stringify(sock.authState.creds)
+                        ).toString("base64")
+                        
                         try {
                             const sentSession = await sock.sendMessage(sock.user.id, { text: session });
                             const info = `
